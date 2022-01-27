@@ -6,14 +6,10 @@ function util.get_plugins(readme)
   local result = {}
   local pattern = "%[`([%w|_]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
   for name, path, description in readme:gmatch(pattern) do
-    table.insert(
-      result,
-      {
-        name=util.trim(name),
-        path=util.trim(path),
-        description=util.trim(description)
-      }
-    )
+    result[util.trim(name)] = {
+      path=util.trim(path),
+      description=util.trim(description)
+    }
   end
   return result
 end
@@ -39,3 +35,4 @@ function util.trim(str)
 end
 
 return util
+
