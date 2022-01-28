@@ -5,7 +5,7 @@ local util = {}
 function util.get_plugins(readme)
   local result = {}
   local size = 0
-  local pattern = "%[`([%w|_]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
+  local pattern = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
   for name, path, description in readme:gmatch(pattern) do
     result[util.trim(name)] = {
       path=util.trim(path),
