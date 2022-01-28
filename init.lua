@@ -1,12 +1,12 @@
 -- mod-version:2
 
-require 'configure'
+require 'plugins.lite-xl-pm.configure'
 local core = require 'core'
 local config = require 'core.config'
 local command = require 'core.command'
 local common = require 'core.common'
 local process = require 'process'
-local util = require 'util'
+local util = require 'plugins.lite-xl-pm.util'
 
 local PLUGIN_BASE_URL = "https://github.com/lite-xl/lite-xl-plugins/blob/master/"
 local PLUGIN_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-plugins/master/README.md"
