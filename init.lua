@@ -44,7 +44,7 @@ local function get_and_show_list()
         local plugin = plugins[name]
         core.add_thread(function()
           local url = plugin.path
-          if not url:find("github.com") then
+          if not url:find("://") then
             url = BASE_URL .. plugin.path
           end
           local downloader = process.start({
