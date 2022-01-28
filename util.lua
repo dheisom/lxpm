@@ -16,6 +16,19 @@ function util.get_plugins(readme)
   return result, size
 end
 
+---@param readme string
+---@return (table,integer)
+function util.get_colors(readme)
+  local result = {}
+  local size = 0
+  local pattern = "%[`([%w|%S]+)%`]%((%S+)%)"
+  for name, path in readme:gmatch(pattern) do
+    result[util.trim(name)] = util.trim(path)
+    size = size + 1
+  end
+  return result, size
+end
+
 ---@param str string
 ---@return string
 function util.trim(str)
