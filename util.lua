@@ -1,17 +1,19 @@
 local util = {}
 
 ---@param readme string
----@return table
+---@return (table,integer)
 function util.get_plugins(readme)
   local result = {}
+  local size = 0
   local pattern = "%[`([%w|_]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
   for name, path, description in readme:gmatch(pattern) do
     result[util.trim(name)] = {
       path=util.trim(path),
       description=util.trim(description)
     }
+    size = size + 1
   end
-  return result
+  return result, size
 end
 
 ---@param str string

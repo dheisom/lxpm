@@ -22,13 +22,13 @@ local function get_and_show_list()
   end
   local data = proc:read_stdout(1 * 1048576) -- 1MiB max
   if data == nil then
-    core.log("[PluginManager] No data received, it can be a network problem!")
+    core.log("[PluginManager] No data received, It can be a network problem!")
     return
   end
-  local plugins = util.get_plugins(data)
+  local plugins, pcount = util.get_plugins(data)
   coroutine.yield(2)
-  if unpack(plugins) then
-    core.log("[PluginManager] Failed to load plugin list!")
+  if pcount == 0 then
+    core.log("[PluginManager] The list is empty, It can be a bug!")
   else
     core.command_view:enter(
       "Install Plugin",
