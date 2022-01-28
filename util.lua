@@ -23,7 +23,7 @@ function util.get_colors(readme)
   local size = 0
   local pattern = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|"
   for name, path in readme:gmatch(pattern) do
-    result[util.trim(name)] = util.trim(path)
+    result[util.trim(name)] = { path=util.trim(path) }
     size = size + 1
   end
   return result, size
@@ -47,6 +47,24 @@ function util.trim(str)
     end
   end
   return str:sub(start, stop)
+end
+
+---@param command table
+---@param callback function(ok: boolean, out: string)
+function util.run(command, callback)
+  local proc = process.start(command)
+  --- Wait until the program close
+  while true do
+    if not proc:running() then
+      break
+    end
+    coroutine.yield(2)
+  end
+  local read_size = 4 * 1048576 -- 4MiB
+  callback(
+    proc:returncode() == 0, -- If true, the command runs with success
+    proc:read_stdout(read_size) or proc:read_stderr(read_size) or ""
+  )
 end
 
 return util
