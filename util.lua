@@ -22,7 +22,7 @@ end
 function util.trim(str)
   str = str:sub(str:find("[%w|%S]")-1):reverse()
   str = str:sub(str:find("[%w|%S]")-1):reverse()
-  return (str ~= "" and str or nil)
+  return (str ~= "" and str) or nil
 end
 
 ---@param command table

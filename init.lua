@@ -24,7 +24,7 @@ local COLORS_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|"
 local function download_and_load(folder, name, path)
   local url = path
   if not url:find("://") then
-    url = (if folder == 'plugins' then PLUGIN_BASE_URL else COLORS_BASE_URL) .. path
+    url = ((folder == 'plugins' and PLUGIN_BASE_URL) or COLORS_BASE_URL) .. path
   end
   net.download(
     ("%s/%s/%s.lua"):format(USERDIR, folder, name), url,
@@ -54,7 +54,7 @@ local function install(itype)
   elseif out == "" then
     return core.log("[PluginManager] No data received, It can be a network problem!")
   end
-  local pattern = if itype == 'plugin' then PLUGIN_PATTERN else COLORS_PATTERN end
+  local pattern = (itype == 'plugin' and PLUGIN_PATTERN) or COLORS_PATTERN
   local list, lsize = util.parse_data(out, pattern)
   coroutine.yield(2)
   if lsize == 0 then
@@ -66,7 +66,7 @@ local function install(itype)
       local text = (item and item.text or text)
       local name = text:sub(1, (text:find(" ") or #text+1)-1)
       core.log("[PluginManager] Installing "..itype.." '"..name.."'...")
-      local folder = if itype == 'plugin' then "plugins" else "colors" end
+      local folder = (itype == 'plugin' and "plugins") or "colors"
       core.add_thread(download_and_load, nil, folder, name, list[name].path)
     end,
     function(text)
@@ -74,7 +74,7 @@ local function install(itype)
       for name, p in pairs(list) do
         table.insert(
           items,
-          if itype == 'plugin' then name.." - "..p.description else name end
+          (itype == 'plugin' and name.." - "..p.description) or name
         )
       end
       return common.fuzzy_match(items, text)
@@ -84,7 +84,7 @@ end
 
 ---@param rtype "theme"|"plugin"
 local function uninstall(rtype)
-  local folder = USERDIR .. (if rtype == 'theme' then "/colors/" else "/plugins/")
+  local folder = USERDIR .. (rtype == 'theme' and "/colors/") or "/plugins/"
   local files = system.list_dir(folder)
   for i, file in ipairs(files) do
     local info = system.get_file_info(folder .. file)
@@ -102,7 +102,7 @@ local function uninstall(rtype)
   core.command_view:enter(
     "Uninstall "..rtype,
     function(text, item)
-      local name = (item and item.text or text)
+      local name = (item and item.text) or text
       local ok, err = os.remove(folder .. name .. ".lua")
       if ok then
         core.log("[PluginManager] Ok "..rtype.." '"..name.."' removed! Restart your editor.")
