@@ -60,7 +60,7 @@ function util.run(command, callback)
     end
     coroutine.yield(2)
   end
-  local read_size = 4 * 1048576 -- 4MiB
+  local read_size = 5 * 1048576 -- 5MiB
   callback(
     proc:returncode() == 0, -- If true, the command runs with success
     proc:read_stdout(read_size) or proc:read_stderr(read_size) or ""

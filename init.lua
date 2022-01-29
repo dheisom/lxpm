@@ -7,12 +7,12 @@ local command = require 'core.command'
 local common = require 'core.common'
 local process = require 'process'
 local util = require 'plugins.lite-xl-pm.util'
+local net = require 'plugins.lite-xl-pm.net'
 
 local PLUGIN_BASE_URL = "https://github.com/lite-xl/lite-xl-plugins/blob/master/"
 local PLUGIN_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-plugins/master/README.md"
 local COLORS_BASE_URL = "https://github.com/lite-xl/lite-xl-colors/blob/master/"
 local COLORS_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/master/README.md"
-
 
 ---@param folder string
 ---@param name string
@@ -26,15 +26,13 @@ local function download_and_load(folder, name, path)
       url = COLORS_BASE_URL .. path
     end
   end
-  util.run(
-    { "curl", "-sL", url, "-o", ("%s/%s/%s.lua"):format(USERDIR, folder, name) },
+  net.download(
+    ("%s/%s/%s.lua"):format(USERDIR, folder, name), url,
     function(ok, out)
       if not ok then
-        core.log("[PluginManager] Error running curl: "..out)
-        return
-      end
-      if folder == "plugins" then
-        config.plugins[name] = require('plugins.'..name)
+        return core.log("[PluginManager] Error running curl: "..out)
+      elseif folder == "plugins" then
+        core.load_plugins()
         core.log("[PluginManager] Plugin '"..name.."' installed and loaded")
       else
         core.reload_module("colors."..name)
@@ -50,7 +48,7 @@ local function install(itype)
   if itype == "theme" then
     url = COLORS_DB_URL
   end
-  core.add_thread(util.run, nil, { "curl", "-sL", url }, function(ok, out)
+  net.load(url, function(ok, out)
   if not ok then
     return core.log("[PluginManager] Error running curl: " .. out)
   elseif out == "" then
@@ -92,9 +90,8 @@ local function install(itype)
           end
         end
         return common.fuzzy_match(items, text)
-      end
-    )
-  end
+      end)
+    end
   end) -- End thread creation
 end
 
