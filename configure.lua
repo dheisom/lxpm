@@ -5,6 +5,7 @@ local core = require 'core'
 function core.add_thread(f, weak_ref, ...)
   local key = weak_ref or #core.threads + 1
   local args = {...}
+  -- To runs on Lua 5.1 and 5.4
   local unpack = unpack or table.unpack
   local fn = function() return core.try(f, unpack(args)) end
   core.threads[key] = { cr = coroutine.create(fn), wake = 0 }

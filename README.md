@@ -8,8 +8,8 @@ It requires `curl` installed on your system!
 # TODO
 
   - [x] Install plugins
-  - [ ] Uninstall plugins
+  - [x] Uninstall plugins
   - [x] Install colors
-  - [ ] Uninstall colors
+  - [x] Uninstall colors
   - [ ] Support for packages
 

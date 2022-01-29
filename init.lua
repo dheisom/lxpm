@@ -2,17 +2,21 @@
 
 require 'plugins.lite-xl-pm.configure'
 local core = require 'core'
-local config = require 'core.config'
 local command = require 'core.command'
 local common = require 'core.common'
-local process = require 'process'
+local system = require 'system'
 local util = require 'plugins.lite-xl-pm.util'
 local net = require 'plugins.lite-xl-pm.net'
 
+-- URLs
 local PLUGIN_BASE_URL = "https://github.com/lite-xl/lite-xl-plugins/blob/master/"
 local PLUGIN_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-plugins/master/README.md"
 local COLORS_BASE_URL = "https://github.com/lite-xl/lite-xl-colors/blob/master/"
 local COLORS_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/master/README.md"
+
+-- Patterns
+local PLUGIN_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
+local COLORS_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|"
 
 ---@param folder string
 ---@param name string
@@ -20,11 +24,7 @@ local COLORS_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/
 local function download_and_load(folder, name, path)
   local url = path
   if not url:find("://") then
-    if folder == "plugins" then
-      url = PLUGIN_BASE_URL .. path
-    else
-      url = COLORS_BASE_URL .. path
-    end
+    url = (if folder == 'plugins' then PLUGIN_BASE_URL else COLORS_BASE_URL) .. path
   end
   net.download(
     ("%s/%s/%s.lua"):format(USERDIR, folder, name), url,
@@ -42,7 +42,7 @@ local function download_and_load(folder, name, path)
   )
 end
 
----@param itype string
+---@param itype "theme"|"plugin"
 local function install(itype)
   local url = PLUGIN_DB_URL
   if itype == "theme" then
@@ -54,55 +54,81 @@ local function install(itype)
   elseif out == "" then
     return core.log("[PluginManager] No data received, It can be a network problem!")
   end
-  local list, lsize
-  if itype == "plugin" then
-    list, lsize = util.get_plugins(out)
-  else
-    list, lsize = util.get_colors(out)
-  end
+  local pattern = if itype == 'plugin' then PLUGIN_PATTERN else COLORS_PATTERN end
+  local list, lsize = util.parse_data(out, pattern)
   coroutine.yield(2)
   if lsize == 0 then
     return core.log("[PluginManager] The list is empty, It can be a bug!")
-  else
-    core.command_view:enter(
-      "Install "..itype,
-      function(text, item)
-        local text = item and item.text or text
-        if text == "" then
-          return core.log("[PluginManager] Operation cancelled!")
-        end
-        local space = text:find(" ") or #text+1
-        local name = text:sub(1, space-1)
-        core.log("[PluginManager] Installing "..itype.." '"..name.."'...")
-        local folder = "plugins"
-        if itype == "theme" then
-          folder = "colors"
-        end
-        core.add_thread(download_and_load, nil, folder, name, list[name].path)
-      end,
-      function(text)
-        local items = {}
-        for name, p in pairs(list) do
-          if itype == "plugin" then
-            table.insert(items, name .. " - " .. p.description)
-          else
-            table.insert(items, name)
-          end
-        end
-        return common.fuzzy_match(items, text)
-      end)
-    end
+  end
+  core.command_view:enter(
+    "Install "..itype,
+    function(text, item)
+      local text = (item and item.text or text)
+      local name = text:sub(1, (text:find(" ") or #text+1)-1)
+      core.log("[PluginManager] Installing "..itype.." '"..name.."'...")
+      local folder = if itype == 'plugin' then "plugins" else "colors" end
+      core.add_thread(download_and_load, nil, folder, name, list[name].path)
+    end,
+    function(text)
+      local items = {}
+      for name, p in pairs(list) do
+        table.insert(
+          items,
+          if itype == 'plugin' then name.." - "..p.description else name end
+        )
+      end
+      return common.fuzzy_match(items, text)
+    end)
   end) -- End thread creation
 end
 
+---@param rtype "theme"|"plugin"
+local function uninstall(rtype)
+  local folder = USERDIR .. (if rtype == 'theme' then "/colors/" else "/plugins/")
+  local files = system.list_dir(folder)
+  for i, file in ipairs(files) do
+    local info = system.get_file_info(folder .. file)
+    if info.type == "dir" then
+      table.remove(files, i)
+      goto skip
+    end
+    files[i] = file:gsub("%.lua$", "")
+    ::skip::
+  end
+  if #files == 0 then
+    return core.log("[PluginManager] You dont have " .. rtype .. "'s installed!")
+  end
+  table.sort(files)
+  core.command_view:enter(
+    "Uninstall "..rtype,
+    function(text, item)
+      local name = (item and item.text or text)
+      local ok, err = os.remove(folder .. name .. ".lua")
+      if ok then
+        core.log("[PluginManager] Ok "..rtype.." '"..name.."' removed! Restart your editor.")
+      else
+        core.log("[PluginManager] '"..name.."' not remove due to an error: "..err)
+      end
+    end,
+    function(text)
+      return common.fuzzy_match(files, text)
+    end)
+end
+
 command.add(nil, {
-    ["PluginManager:plugin-install"] = function()
+    ["PluginManager:install-plugin"] = function()
       core.log("[PluginManager] Loading plugin list...")
       core.add_thread(install, nil, "plugin")
     end,
-    ["PluginManager:theme-install"] = function()
+    ["PluginManager:install-theme"] = function()
       core.log("[PluginManager] Loading theme list...")
       core.add_thread(install, nil, "theme")
+    end,
+    ["PluginManager:uninstall-plugin"] = function()
+      core.add_thread(uninstall, nil, "plugin")
+    end,
+    ["PluginManager:uninstall-theme"] = function()
+      core.add_thread(uninstall, nil, "theme")
     end
   }
 )
