@@ -11,4 +11,5 @@ It requires `curl` installed on your system!
   - [ ] Uninstall plugins
   - [x] Install colors
   - [ ] Uninstall colors
+  - [ ] Support for packages
 
