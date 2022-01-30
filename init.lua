@@ -77,6 +77,7 @@ local function install(itype)
           (itype == 'plugin' and name.." - "..p.description) or name
         )
       end
+      table.sort(items)
       return common.fuzzy_match(items, text)
     end)
   end) -- End thread creation
@@ -115,6 +116,31 @@ local function uninstall(rtype)
     end)
 end
 
+local function run_package_installer()
+  core.command_view:enter(
+    "Direct package installer URL",
+    function(url)
+      if not url:match("http[s]?://") then
+        return core.log("[PluginManager] This URL is invalid! Only HTTP and HTTPS are supported")
+      end
+      core.log("[PluginManager] Loading the installer from the internet...")
+      net.load(url, function(ok, out)
+        if not ok then
+          return core.log("[PluginManager] An error has ocorred: " .. out)
+        end
+        local lload
+        if _VERSION:match("5%.1") then
+          lload = loadstring
+        else
+          lload = load
+        end
+        core.log("[PluginManager] Running installer...")
+        lload(out)()
+      end)
+    end
+  )
+end
+
 command.add(nil, {
     ["PluginManager:install-plugin"] = function()
       core.log("[PluginManager] Loading plugin list...")
@@ -129,6 +155,9 @@ command.add(nil, {
     end,
     ["PluginManager:uninstall-theme"] = function()
       core.add_thread(uninstall, nil, "theme")
+    end,
+    ["PluginManager:run-package-installer"] = function()
+      core.add_thread(run_package_installer)
     end
   }
 )

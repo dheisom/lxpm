@@ -11,5 +11,5 @@ It requires `curl` installed on your system!
   - [x] Uninstall plugins
   - [x] Install colors
   - [x] Uninstall colors
-  - [ ] Support for packages
+  - [x] Support for packages(basic: only load a lua script from network)
 
