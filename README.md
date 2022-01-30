@@ -8,7 +8,8 @@ It requires `curl` installed on your system!
 # TODO
 
   - [x] Install plugins
-  - [ ] Uninstall plugins
+  - [x] Uninstall plugins
   - [x] Install colors
-  - [ ] Uninstall colors
+  - [x] Uninstall colors
+  - [x] Support for packages(basic: only load a lua script from network)
 
