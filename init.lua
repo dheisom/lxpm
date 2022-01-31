@@ -63,8 +63,7 @@ local function install(itype)
   core.command_view:enter(
     "Install "..itype,
     function(text, item)
-      local text = (item and item.text or text)
-      local name = text:sub(1, (text:find(" ") or #text+1)-1)
+      local name = util.split(item and item.text or text)[1]
       core.log("[PluginManager] Installing "..itype.." '"..name.."'...")
       local folder = (itype == 'plugin' and "plugins") or "colors"
       core.add_thread(download_and_load, nil, folder, name, list[name].path)
@@ -128,14 +127,13 @@ local function run_package_installer()
         if not ok then
           return core.log("[PluginManager] An error has ocorred: " .. out)
         end
-        local lload
-        if _VERSION:match("5%.1") then
-          lload = loadstring
-        else
-          lload = load
-        end
+        local lload = _VERSION:match("5%.1") and loadstring or load
         core.log("[PluginManager] Running installer...")
-        lload(out)()
+        local func, err = lload(out)
+        if func == nil then
+          return core.log("[PluginManager] The returned function is empty, I have an error: " .. err)
+        end
+	func()
       end)
     end
   )

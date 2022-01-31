@@ -1,4 +1,5 @@
 local core = require 'core'
+local system = require 'system'
 
 local util = {}
 
@@ -20,9 +21,32 @@ end
 ---@param str string
 ---@return string|nil
 function util.trim(str)
+  if str == nil or str == "" then
+    return nil
+  end
   str = str:sub(str:find("[%w|%S]")-1):reverse()
   str = str:sub(str:find("[%w|%S]")-1):reverse()
-  return (str ~= "" and str) or nil
+  return str
+end
+
+---@param str string
+---@param sep string
+---@return table<string>
+function util.split(str, sep)
+  if str == nil then return {} end
+  local sep = sep or "[ |\n]"
+  local result = {}
+  while true do
+    local new = str:find(sep)
+    if new == nil then
+      if str ~= "" then table.insert(result, str) end
+      break
+    end
+    local text = str:sub(1, new-1)
+    if text ~= "" then table.insert(result, text) end
+    str = str:sub(new+1)
+  end
+  return result
 end
 
 ---@param command table
@@ -33,11 +57,37 @@ function util.run(command, callback)
     coroutine.yield(2)
   end
   local read_size = 5 * 1048576 -- 5MiB
-  core.add_thread(
-    callback, nil,
-    proc:returncode() == 0, -- If true, the command runs with success
-    proc:read_stdout(read_size) or proc:read_stderr(read_size) or ""
-  )
+  local ok, out
+  if proc:returncode() ~= 0 then
+    ok = false
+    out = proc:read_stderr(read_size)
+  else
+    ok = true
+    out = proc:read_stdout(read_size)
+  end
+  core.add_thread(callback, nil, ok, out)
+end
+
+---@param dir string
+---@return (boolean,error)
+function util.rmtree(dir)
+  local dir = system.absolute_path(dir)
+  local list = system.list_dir(dir)
+  local ok = true
+  local err
+  for _, f in ipairs(list) do
+    local file = dir .. "/" .. f
+    local info = system.get_file_info(file)
+    if info.type == "dir" then
+      ok, err = util.rmtree(file)
+      if not ok then break end
+      ok, err = os.remove(file)
+    else
+      ok, err = os.remove(file)
+    end
+    if not ok then break end
+  end
+  return ok, err
 end
 
 return util
