@@ -54,7 +54,7 @@ end
 function util.run(command, callback)
   local proc = process.start(command)
   while proc:running() do
-    coroutine.yield(2)
+    coroutine.yield(1)
   end
   local read_size = 5 * 1048576 -- 5MiB
   local ok, out
@@ -66,28 +66,6 @@ function util.run(command, callback)
     out = proc:read_stdout(read_size)
   end
   core.add_thread(callback, nil, ok, out)
-end
-
----@param dir string
----@return (boolean,error)
-function util.rmtree(dir)
-  local dir = system.absolute_path(dir)
-  local list = system.list_dir(dir)
-  local ok = true
-  local err
-  for _, f in ipairs(list) do
-    local file = dir .. "/" .. f
-    local info = system.get_file_info(file)
-    if info.type == "dir" then
-      ok, err = util.rmtree(file)
-      if not ok then break end
-      ok, err = os.remove(file)
-    else
-      ok, err = os.remove(file)
-    end
-    if not ok then break end
-  end
-  return ok, err
 end
 
 return util
