@@ -7,6 +7,7 @@ local common = require 'core.common'
 local system = require 'system'
 local util = require 'plugins.lite-xl-pm.util'
 local net = require 'plugins.lite-xl-pm.net'
+local logger = require 'plugins.lite-xl-pm.logger'
 
 -- URLs
 local PLUGIN_BASE_URL = "https://github.com/lite-xl/lite-xl-plugins/blob/master/"
@@ -18,25 +19,28 @@ local COLORS_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/
 local PLUGIN_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
 local COLORS_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|"
 
+local pluginmanager = logger:new("[PluginManager]")
+
 ---@param folder string
 ---@param name string
 ---@param path string
 local function download_and_load(folder, name, path)
   local url = path
   if not url:find("://") then
-    url = ((folder == 'plugins' and PLUGIN_BASE_URL) or COLORS_BASE_URL) .. path
+    local base = (folder == 'plugins' and PLUGIN_BASE_URL) or COLORS_BASE_URL
+    url = base .. path
   end
   net.download(
     ("%s/%s/%s.lua"):format(USERDIR, folder, name), url,
     function(ok, out)
       if not ok then
-        return core.log("[PluginManager] Error running curl: "..out)
+        return pluginmanager:error("Error running curl: "..out)
       elseif folder == "plugins" then
         core.load_plugins()
-        core.log("[PluginManager] Plugin '"..name.."' installed and loaded")
+        pluginmanager:log("Plugin '"..name.."' installed and loaded")
       else
         core.reload_module("colors."..name)
-        core.log("[PluginManager] Theme '"..name.."' installed and loaded")
+        pluginmanager:log("Theme '"..name.."' installed and loaded")
       end
     end
   )
@@ -50,21 +54,21 @@ local function install(itype)
   end
   net.load(url, function(ok, out)
   if not ok then
-    return core.log("[PluginManager] Error running curl: " .. out)
+    return pluginmanager:error("Error running curl: " .. out)
   elseif out == "" then
-    return core.log("[PluginManager] No data received, It can be a network problem!")
+    return pluginmanager:error("No data received, It can be a network problem!")
   end
   local pattern = (itype == 'plugin' and PLUGIN_PATTERN) or COLORS_PATTERN
   local list, lsize = util.parse_data(out, pattern)
   coroutine.yield(2)
   if lsize == 0 then
-    return core.log("[PluginManager] The list is empty, It can be a bug!")
+    return pluginmanager:error("The list is empty, It can be a bug!")
   end
   core.command_view:enter(
     "Install "..itype,
     function(text, item)
       local name = util.split(item and item.text or text)[1]
-      core.log("[PluginManager] Installing "..itype.." '"..name.."'...")
+      pluginmanager:log("Installing "..itype.." '"..name.."'...")
       local folder = (itype == 'plugin' and "plugins") or "colors"
       core.add_thread(download_and_load, nil, folder, name, list[name].path)
     end,
@@ -96,7 +100,7 @@ local function uninstall(rtype)
     ::skip::
   end
   if #files == 0 then
-    return core.log("[PluginManager] You dont have " .. rtype .. "'s installed!")
+    return pluginmanager:log("You dont have " .. rtype .. "'s installed!")
   end
   table.sort(files)
   core.command_view:enter(
@@ -105,9 +109,9 @@ local function uninstall(rtype)
       local name = (item and item.text) or text
       local ok, err = os.remove(folder .. name .. ".lua")
       if ok then
-        core.log("[PluginManager] Ok "..rtype.." '"..name.."' removed! Restart your editor.")
+        pluginmanager:log("Ok "..rtype.." '"..name.."' removed! Restart your editor.")
       else
-        core.log("[PluginManager] '"..name.."' not remove due to an error: "..err)
+        pluginmanager:error("'"..name.."' not remove due to an error: "..err)
       end
     end,
     function(text)
@@ -120,20 +124,19 @@ local function run_package_installer()
     "Direct package installer URL",
     function(url)
       if not url:match("http[s]?://") then
-        return core.log("[PluginManager] This URL is invalid! Only HTTP and HTTPS are supported")
+        return pluginmanager:error("This URL is invalid! Only HTTP and HTTPS are supported")
       end
-      core.log("[PluginManager] Loading the installer from the internet...")
+      pluginmanager:log("Loading the installer from the internet...")
       net.load(url, function(ok, out)
         if not ok then
-          return core.log("[PluginManager] An error has ocorred: " .. out)
+          return pluginmanager:error("An error has ocorred: " .. out)
         end
         local lload = _VERSION:match("5%.1") and loadstring or load
-        core.log("[PluginManager] Running installer...")
+        pluginmanager:log("Running installer...")
         local func, err = lload(out)
         if func == nil then
-          return core.log("[PluginManager] The returned function is empty, I have an error: " .. err)
+          return pluginmanager:error("The returned function is empty, I have an error: " .. err)
         end
-	func()
       end)
     end
   )
@@ -141,11 +144,11 @@ end
 
 command.add(nil, {
     ["PluginManager:install-plugin"] = function()
-      core.log("[PluginManager] Loading plugin list...")
+      pluginmanager:log("Loading plugin list...")
       core.add_thread(install, nil, "plugin")
     end,
     ["PluginManager:install-theme"] = function()
-      core.log("[PluginManager] Loading theme list...")
+      pluginmanager:log("Loading theme list...")
       core.add_thread(install, nil, "theme")
     end,
     ["PluginManager:uninstall-plugin"] = function()
