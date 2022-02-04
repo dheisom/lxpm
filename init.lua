@@ -88,7 +88,7 @@ end
 
 ---@param rtype "theme"|"plugin"
 local function uninstall(rtype)
-  local folder = USERDIR .. (rtype == 'theme' and "/colors/") or "/plugins/"
+  local folder = USERDIR .. ((rtype == 'theme' and "/colors/") or "/plugins/")
   local files = system.list_dir(folder)
   for i, file in ipairs(files) do
     local info = system.get_file_info(folder .. file)
@@ -137,7 +137,7 @@ local function run_package_installer()
         if installer == nil then
           return pluginmanager:error("The returned function is empty, I have an error: " .. err)
         end
-        local ok, err = pcall(installer)
+        ok, err = pcall(installer)
         if not ok then
           pluginmanager:error("The installer has an error: "..err)
         end
@@ -166,4 +166,3 @@ command.add(nil, {
     end
   }
 )
-
