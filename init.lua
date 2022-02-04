@@ -133,9 +133,13 @@ local function run_package_installer()
         end
         local lload = _VERSION:match("5%.1") and loadstring or load
         pluginmanager:log("Running installer...")
-        local func, err = lload(out)
-        if func == nil then
+        local installer, err = lload(out)
+        if installer == nil then
           return pluginmanager:error("The returned function is empty, I have an error: " .. err)
+        end
+        local ok, err = pcall(installer)
+        if not ok then
+          pluginmanager:error("The installer has an error: "..err)
         end
       end)
     end
