@@ -1,23 +1,15 @@
 -- mod-version:2
 
-require 'plugins.lite-xl-pm.configure'
+require 'plugins.lite-xl-pm.replacefunctions'
 local core = require 'core'
 local command = require 'core.command'
 local common = require 'core.common'
+local keymap = require 'core.keymap'
 local system = require 'system'
+local pmconfig = require 'plugins.lite-xl-pm.config'
 local util = require 'plugins.lite-xl-pm.util'
 local net = require 'plugins.lite-xl-pm.net'
 local logger = require 'plugins.lite-xl-pm.logger'
-
--- URLs
-local PLUGIN_BASE_URL = "https://github.com/lite-xl/lite-xl-plugins/blob/master/"
-local PLUGIN_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-plugins/master/README.md"
-local COLORS_BASE_URL = "https://github.com/lite-xl/lite-xl-colors/blob/master/"
-local COLORS_DB_URL = "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/master/README.md"
-
--- Patterns
-local PLUGIN_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|[ ]+([%w|%S| ]*)|"
-local COLORS_PATTERN = "%[`([%w|%S]+)%`]%((%S+)%)[ ]+|"
 
 local pluginmanager = logger:new("[PluginManager]")
 
@@ -27,7 +19,7 @@ local pluginmanager = logger:new("[PluginManager]")
 local function download_and_load(folder, name, path)
   local url = path
   if not url:find("://") then
-    local base = (folder == 'plugins' and PLUGIN_BASE_URL) or COLORS_BASE_URL
+    local base = (folder == 'plugins' and pmconfig.base_url.plugins) or pmconfig.base_url.themes
     url = base .. path
   end
   net.download(
@@ -48,41 +40,44 @@ end
 
 ---@param itype "theme"|"plugin"
 local function install(itype)
-  local url = PLUGIN_DB_URL
+  pluginmanager:log("Loading " .. itype .. " list...")
+  local url = pmconfig.db.plugins
   if itype == "theme" then
-    url = COLORS_DB_URL
+    url = pmconfig.db.themes
   end
   net.load(url, function(ok, out)
-  if not ok then
-    return pluginmanager:error("Error running curl: " .. out)
-  elseif out == "" then
-    return pluginmanager:error("No data received, It can be a network problem!")
-  end
-  local pattern = (itype == 'plugin' and PLUGIN_PATTERN) or COLORS_PATTERN
-  local list, lsize = util.parse_data(out, pattern)
-  coroutine.yield(2)
-  if lsize == 0 then
-    return pluginmanager:error("The list is empty, It can be a bug!")
-  end
-  core.command_view:enter(
-    "Install "..itype,
-    function(text, item)
-      local name = util.split(item and item.text or text)[1]
-      pluginmanager:log("Installing "..itype.." '"..name.."'...")
-      local folder = (itype == 'plugin' and "plugins") or "colors"
-      core.add_thread(download_and_load, nil, folder, name, list[name].path)
-    end,
-    function(text)
-      local items = {}
-      for name, p in pairs(list) do
-        table.insert(
-          items,
-          (itype == 'plugin' and name.." - "..p.description) or name
-        )
+    if not ok then
+      return pluginmanager:error("Error running curl: " .. out)
+    elseif out == "" then
+      return pluginmanager:error("No data received, It can be a network problem!")
+    end
+    local pattern = (itype == 'plugin' and pmconfig.patterns.plugins) or pmconfig.patterns.themes
+    local list, lsize = util.parse_data(out, pattern)
+    coroutine.yield(0)
+    if lsize == 0 then
+      return pluginmanager:error("The list is empty, It can be a bug!")
+    end
+    core.command_view:enter(
+      "Install "..itype,
+      function(text, item)
+        local name = util.split(item and item.text or text)[1]
+        pluginmanager:log("Installing "..itype.." '"..name.."'...")
+        local folder = (itype == 'plugin' and "plugins") or "colors"
+        core.add_thread(download_and_load, nil, folder, name, list[name].path)
+      end,
+      function(text)
+        local items = {}
+        for name, p in pairs(list) do
+          table.insert(
+            items,
+            (itype == 'plugin' and name.." - "..p.description) or name
+          )
+        end
+        local result = common.fuzzy_match(items, text)
+        table.sort(result)
+        return result
       end
-      table.sort(items)
-      return common.fuzzy_match(items, text)
-    end)
+    )
   end) -- End thread creation
 end
 
@@ -90,19 +85,17 @@ end
 local function uninstall(rtype)
   local folder = USERDIR .. ((rtype == 'theme' and "/colors/") or "/plugins/")
   local files = system.list_dir(folder)
-  for i, file in ipairs(files) do
+  local list = {}
+  for _, file in pairs(files) do
     local info = system.get_file_info(folder .. file)
-    if info.type == "dir" then
-      table.remove(files, i)
-      goto skip
+    if info.type ~= "dir" then
+      local name = file:gsub("%.lua$", "")
+      table.insert(list, name)
     end
-    files[i] = file:gsub("%.lua$", "")
-    ::skip::
   end
-  if #files == 0 then
+  if #list == 0 then
     return pluginmanager:log("You dont have " .. rtype .. "'s installed!")
   end
-  table.sort(files)
   core.command_view:enter(
     "Uninstall "..rtype,
     function(text, item)
@@ -115,7 +108,9 @@ local function uninstall(rtype)
       end
     end,
     function(text)
-      return common.fuzzy_match(files, text)
+      local result = common.fuzzy_match(list, text)
+      table.sort(result)
+      return result
     end)
 end
 
@@ -131,7 +126,7 @@ local function run_package_installer()
         if not ok then
           return pluginmanager:error("An error has ocorred: " .. out)
         end
-        local lload = _VERSION:match("5%.1") and loadstring or load
+        local lload = rawget(_G, "loadstring") or rawget(_G, "load")
         pluginmanager:log("Running installer...")
         local installer, err = lload(out)
         if installer == nil then
@@ -141,28 +136,56 @@ local function run_package_installer()
         if not ok then
           pluginmanager:error("The installer has an error: "..err)
         end
+        pluginmanager:log("Installer finished!")
       end)
     end
   )
 end
 
-command.add(nil, {
-    ["PluginManager:install-plugin"] = function()
-      pluginmanager:log("Loading plugin list...")
-      core.add_thread(install, nil, "plugin")
+local function install_menu()
+  core.command_view:enter(
+    "Install",
+    function(option, item)
+      option = option or item.text
+      if option == "Plugin" then
+        core.add_thread(install, nil, "plugin")
+      elseif option == "Theme" then
+        core.add_thread(install, nil, "theme")
+      elseif option == "Package" then
+        core.add_thread(run_package_installer)
+      end
     end,
-    ["PluginManager:install-theme"] = function()
-      pluginmanager:log("Loading theme list...")
-      core.add_thread(install, nil, "theme")
-    end,
-    ["PluginManager:uninstall-plugin"] = function()
-      core.add_thread(uninstall, nil, "plugin")
-    end,
-    ["PluginManager:uninstall-theme"] = function()
-      core.add_thread(uninstall, nil, "theme")
-    end,
-    ["PluginManager:run-package-installer"] = function()
-      core.add_thread(run_package_installer)
+    function(text)
+      local options = { "Package", "Plugin", "Theme" }
+      return common.fuzzy_match(options, text)
     end
-  }
-)
+  )
+end
+
+local function uninstall_menu()
+  core.command_view:enter(
+    "Uninstall",
+    function(option, item)
+      option = option or item.text
+      if option == "Plugin" then
+        core.add_thread(uninstall, nil, "plugin")
+      elseif option == "Theme" then
+        core.add_thread(uninstall, nil, "theme")
+      end
+    end,
+    function(text)
+      local options = { "Plugin", "Theme" }
+      return common.fuzzy_match(options, text)
+    end
+  )
+end
+
+command.add(nil, {
+  ["PluginManager:install"] = install_menu,
+  ["PluginManager:uninstall"] = uninstall_menu
+})
+
+keymap.add {
+  ["ctrl+shift+i"] = "PluginManager:install",
+  ["ctrl+shift+u"] = "PluginManager:uninstall"
+}

@@ -1,19 +1,26 @@
 local core = require 'core'
-local system = require 'system'
+local process = require 'process'
+local pmconfig = require 'plugins.lite-xl-pm.config'
 
 local util = {}
 
 ---@param data string
 ---@param pattern string
----@return (table, integer)
+---@return table,integer
 function util.parse_data(data, pattern)
   local result, size = {}, 0
   for name, path, description in data:gmatch(pattern) do
+    if pattern == pmconfig.patterns.plugins then
+      if pmconfig.ignore_plugins[util.trim(name)] then
+        goto skip
+      end
+    end
     result[util.trim(name)] = {
       path=util.trim(path),
       description=util.trim(description or "")
     }
     size = size + 1
+    ::skip::
   end
   return result, size
 end
@@ -31,10 +38,10 @@ end
 
 ---@param str string
 ---@param sep string
----@return table<string>
+---@return table
 function util.split(str, sep)
   if str == nil then return {} end
-  local sep = sep or "[ |\n]"
+  sep = sep or "[ |\n]"
   local result = {}
   while true do
     local new = str:find(sep)
@@ -54,17 +61,11 @@ end
 function util.run(command, callback)
   local proc = process.start(command)
   while proc:running() do
-    coroutine.yield(1)
+    coroutine.yield(0)
   end
   local read_size = 5 * 1048576 -- 5MiB
-  local ok, out
-  if proc:returncode() ~= 0 then
-    ok = false
-    out = proc:read_stderr(read_size)
-  else
-    ok = true
-    out = proc:read_stdout(read_size)
-  end
+  local ok = proc:returncode() == 0
+  local out = proc:read_stdout(read_size) or proc:read_stderr(read_size)
   core.add_thread(callback, nil, ok, out)
 end
 

@@ -1,12 +1,11 @@
 local core = require 'core'
 
----@type class
 local logger = {}
 
----@param msg string
----@return logger
+---@param prefix string
+---@return table
 function logger:new(prefix)
-  local prefix = prefix or "[%Y/%m/%d %H:%M:%S]"
+  prefix = prefix or "[%Y/%m/%d %H:%M:%S]"
   return setmetatable({ prefix = prefix }, logger)
 end
 

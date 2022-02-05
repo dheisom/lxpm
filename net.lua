@@ -7,13 +7,21 @@ local net = {}
 ---@param url string
 ---@param callback function
 function net.download(filename, url, callback)
-  core.add_thread(util.run, nil, { "curl", "-sL", url, "-o", filename}, callback)
+  core.add_thread(
+    util.run, nil,
+    { "curl", "--stderr", "-", "-SLsfk", url, "-o", filename },
+    callback
+  )
 end
 
 ---@param url string
 ---@param callback function
 function net.load(url, callback)
-  core.add_thread(util.run, nil, { "curl", "-sLo-", url }, callback)
+  core.add_thread(
+    util.run, nil,
+    { "curl", "--stderr", "-", "-SLsfko-", url },
+    callback
+  )
 end
 
 return net
