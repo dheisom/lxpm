@@ -56,17 +56,19 @@ function util.split(str, sep)
   return result
 end
 
+---A non-blocking function to run commands on the system
 ---@param command table
----@param callback fun(ok: boolean, out: string)
-function util.run(command, callback)
+---@return integer returncode, string stdout, string stderr
+function util.run(command)
   local proc = process.start(command)
   while proc:running() do
-    coroutine.yield(0)
+    coroutine.yield(0.1)
   end
   local read_size = 5 * 1048576 -- 5MiB
-  local ok = proc:returncode() == 0
-  local out = proc:read_stdout(read_size) or proc:read_stderr(read_size)
-  core.add_thread(callback, nil, ok, out)
+  local code = proc:returncode()
+  local out = proc:read_stdout(read_size)
+  local err = proc:read_stderr(read_size)
+  return code, out, err
 end
 
 return util
