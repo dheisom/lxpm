@@ -1,3 +1,4 @@
+local core = require 'core'
 local util = require 'plugins.lite-xl-pm.util'
 
 local net = {
@@ -9,35 +10,44 @@ local net = {
 
 ---@param filename string
 ---@param url string
----@return boolean ok, string error
-function net.download(filename, url)
-  local code, _, err = util.run(
-    { "curl", "--stderr", "-", "-SLsfk", url, "-o", filename }
+---@param callback fun(ok boolean, stderr string)
+function net.download(filename, url, callback)
+  core.add_thread(
+    util.run, nil,
+    { "curl", "--stderr", "-", "-SLsfk", url, "-o", filename },
+    function(code, _, err) callback(code==0, err) end
   )
-  return (code == 0), err
 end
 
 ---@param url string
----@return boolean ok, string result, string error
-function net.load(url)
-  local code, result, err = util.run(
-    { "curl", "--stderr", "-", "-SLsfko-", url }
+---@param callback fun(ok boolean, stdout string)
+function net.load(url, callback)
+  core.add_thread(
+    util.run, nil,
+    { "curl", "--stderr", "-", "-SLsfko-", url },
+    function(code, result) callback(code==0, result) end
   )
-  return (code == 0), result, err
 end
 
 ---@param url string
 ---@param path string
----@return boolean ok, string message
-function net.clone(url, path)
-  local code = util.run({ "git", "clone", "--depth=1", url, path })
-  if code == 128 then
-    return false, net.git_status.exists_or_not_found
-  elseif code == 0 then
-    return true, net.git_status.ok
-  else
-    return false, "unknown error(" .. code .. ")"
-  end
+---@param callback fun(ok boolean, message string)
+function net.clone(url, path, callback)
+  core.add_thread(
+    util.run, nil,
+    { "git", "clone", "--depth=1", url, path },
+    function(code)
+      local ok, message
+      if code == 128 then
+        ok, message = false, net.git_status.exists_or_not_found
+      elseif code == 0 then
+        ok, message = true, net.git_status.ok
+      else
+        ok, message = false, "unknown error(" .. code .. ")"
+      end
+      callback(ok, message)
+    end
+  )
 end
 
 return net

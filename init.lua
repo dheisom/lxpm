@@ -19,19 +19,24 @@ local pluginmanager = logger:new("[PluginManager]")
 local function download_and_load(folder, name, path)
   local url = path
   if not url:find("://") then
-    local base = (folder == 'plugins' and pmconfig.base_url.plugins) or pmconfig.base_url.themes
+    local base = (folder == 'plugins' and pmconfig.base_url.plugins)
+                 or pmconfig.base_url.themes
     url = base .. path
   end
-  local ok, err = net.download(USERDIR.."/"..folder.."/"..name..".lua", url)
-  if not ok then
-    return pluginmanager:error("Error running curl: "..err)
-  elseif folder == "plugins" then
-    core.load_plugins()
-    pluginmanager:log("Plugin '"..name.."' installed and loaded")
-  else
-    core.reload_module("colors."..name)
-    pluginmanager:log("Theme '"..name.."' installed and loaded")
-  end
+  net.download(
+    USERDIR.."/"..folder.."/"..name..".lua", url,
+    function(ok, err)
+      if not ok then
+        return pluginmanager:error("Error running curl: "..err)
+      elseif folder == "plugins" then
+        core.load_plugins()
+        pluginmanager:log("Plugin '"..name.."' installed and loaded")
+      else
+        core.reload_module("colors."..name)
+        pluginmanager:log("Theme '"..name.."' installed and loaded")
+      end
+    end
+  )
 end
 
 ---@param itype "theme"|"plugin"
@@ -41,37 +46,44 @@ local function install(itype)
   if itype == "theme" then
     url = pmconfig.db.themes
   end
-  local ok, result, err = net.load(url)
-  if not ok then
-    return pluginmanager:error("Error running curl: " .. err)
-  elseif result == "" or result == nil then
-    return pluginmanager:error("No data received, It can be a network problem!")
-  end
-  local pattern = (itype == 'plugin' and pmconfig.patterns.plugins) or pmconfig.patterns.themes
-  local list, lsize = util.parse_data(result, pattern)
-  coroutine.yield(0.1)
-  if lsize == 0 then
-    return pluginmanager:error("The list is empty, It can be a bug!")
-  end
-  core.command_view:enter(
-    "Install "..itype,
-    function(text, item)
-      local name = util.split(item and item.text or text)[1]
-      pluginmanager:log("Installing "..itype.." '"..name.."'...")
-      local folder = (itype == 'plugin' and "plugins") or "colors"
-      core.add_thread(download_and_load, nil, folder, name, list[name].path)
-    end,
-    function(text)
-      local items = {}
-      for name, p in pairs(list) do
-        table.insert(
-          items,
-          (itype == 'plugin' and name.." - "..p.description) or name
+  net.load(
+    url,
+    function(ok, result)
+      if not ok then
+        return pluginmanager:error("Error running curl: " .. result)
+      elseif result == "" or result == nil then
+        return pluginmanager:error(
+          "No data received, It can be a network problem!"
         )
       end
-      local result = common.fuzzy_match(items, text)
-      table.sort(result)
-      return result
+      local pattern = (itype == 'plugin' and pmconfig.patterns.plugins)
+                      or pmconfig.patterns.themes
+      local list, lsize = util.parse_data(result, pattern)
+      coroutine.yield(0.1)
+      if lsize == 0 then
+        return pluginmanager:error("The list is empty, It can be a bug!")
+      end
+      core.command_view:enter(
+        "Install "..itype,
+        function(text, item)
+          local name = util.split(item and item.text or text)[1]
+          pluginmanager:log("Installing "..itype.." '"..name.."'...")
+          local folder = (itype == 'plugin' and "plugins") or "colors"
+          core.add_thread(download_and_load, nil, folder, name, list[name].path)
+        end,
+        function(text)
+          local items = {}
+          for name, p in pairs(list) do
+            table.insert(
+              items,
+              (itype == 'plugin' and name.." - "..p.description) or name
+            )
+          end
+          local result = common.fuzzy_match(items, text)
+          table.sort(result)
+          return result
+        end
+      )
     end
   )
 end
@@ -97,7 +109,9 @@ local function uninstall(rtype)
       local name = (item and item.text) or text
       local ok, err = os.remove(folder .. name .. ".lua")
       if ok then
-        pluginmanager:log("Ok "..rtype.." '"..name.."' removed! Restart your editor.")
+        pluginmanager:log(
+          "Ok "..rtype.." '"..name.."' removed! Restart your editor."
+        )
       else
         pluginmanager:error("'"..name.."' not remove due to an error: "..err)
       end
@@ -114,24 +128,28 @@ local function run_package_installer()
     "Direct package installer URL",
     function(url)
       if not url:match("http[s]?://") then
-        return pluginmanager:error("This URL is invalid! Only HTTP and HTTPS are supported")
+        return pluginmanager:error(
+          "This URL is invalid! Only HTTP and HTTPS are supported"
+        )
       end
       pluginmanager:log("Loading the installer from the internet...")
-      local ok, result, err = net.load(url)
-      if not ok then
-        return pluginmanager:error("An error has ocorred: " .. err)
-      end
-      local lload = rawget(_G, "loadstring") or rawget(_G, "load")
-      pluginmanager:log("Running installer...")
-      local installer, err = lload(result)
-      if installer == nil then
-        return pluginmanager:error("The returned function is empty, I have an error: " .. err)
-      end
-      ok, err = pcall(installer)
-      if not ok then
-        return pluginmanager:error("The installer has an error: "..err)
-      end
-      pluginmanager:log("Installer finished!")
+      net.load(
+        url,
+        function(ok, result)
+          if not ok then
+            return pluginmanager:error("An error has ocorred: " .. result)
+          end
+          local lload = rawget(_G, "loadstring") or rawget(_G, "load")
+          pluginmanager:log("Running installer...")
+          local installer, err = lload(result)
+          if installer == nil then
+            return pluginmanager:error(
+              "The returned function is empty, I have an error: " .. err
+            )
+          end
+          core.add_thread(installer)
+        end
+      )
     end
   )
 end

@@ -58,17 +58,17 @@ end
 
 ---A non-blocking function to run commands on the system
 ---@param command table
----@return integer returncode, string stdout, string stderr
-function util.run(command)
+---@param callback fun(code integer, stdout string, stderr string)
+function util.run(command, callback)
   local proc = process.start(command)
   while proc:running() do
     coroutine.yield(0.1)
   end
-  local read_size = 5 * 1048576 -- 5MiB
+  local read_size = 10485760 -- 10MiB
   local code = proc:returncode()
   local out = proc:read_stdout(read_size)
   local err = proc:read_stderr(read_size)
-  return code, out, err
+  core.add_thread(callback, nil, code, out, err)
 end
 
 return util
