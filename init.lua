@@ -42,10 +42,8 @@ end
 ---@param itype "theme"|"plugin"
 local function install(itype)
   pluginmanager:log("Loading " .. itype .. " list...")
-  local url = pmconfig.db.plugins
-  if itype == "theme" then
-    url = pmconfig.db.themes
-  end
+  local url = (itype == "theme" and pmconfig.db.themes)
+              or pmconfig.db.plugins
   net.load(
     url,
     function(ok, result)
@@ -56,8 +54,8 @@ local function install(itype)
           "No data received, It can be a network problem!"
         )
       end
-      local pattern = (itype == 'plugin' and pmconfig.patterns.plugins)
-                      or pmconfig.patterns.themes
+      local pattern = (itype == "theme" and pmconfig.patterns.themes)
+                      or pmconfig.patterns.plugins
       local list, lsize = util.parse_data(result, pattern)
       coroutine.yield(0.1)
       if lsize == 0 then
@@ -79,9 +77,9 @@ local function install(itype)
               (itype == 'plugin' and name.." - "..p.description) or name
             )
           end
-          local result = common.fuzzy_match(items, text)
-          table.sort(result)
-          return result
+          items = common.fuzzy_match(items, text)
+          table.sort(items)
+          return items
         end
       )
     end
@@ -123,31 +121,61 @@ local function uninstall(rtype)
     end)
 end
 
-local function run_package_installer()
-  core.command_view:enter(
-    "Direct package installer URL",
-    function(url)
-      if not url:match("http[s]?://") then
+local function load_and_run_installer(url)
+  pluginmanager:log("Loading installer from the internet...")
+  net.load(
+    url,
+    function(ok, result)
+      if not ok then
+        return pluginmanager:error("An error has ocorred: " .. result)
+      end
+      local lload = rawget(_G, "loadstring") or rawget(_G, "load")
+      pluginmanager:log("Running installer...")
+      local installer, err = lload(result)
+      if installer == nil then
         return pluginmanager:error(
-          "This URL is invalid! Only HTTP and HTTPS are supported"
+          "The returned function is empty, I have an error: " .. err
         )
       end
-      pluginmanager:log("Loading the installer from the internet...")
-      net.load(
-        url,
-        function(ok, result)
-          if not ok then
-            return pluginmanager:error("An error has ocorred: " .. result)
-          end
-          local lload = rawget(_G, "loadstring") or rawget(_G, "load")
-          pluginmanager:log("Running installer...")
-          local installer, err = lload(result)
-          if installer == nil then
+      core.add_thread(installer)
+    end
+  )
+end
+
+local function package_installer()
+  pluginmanager:log("Loading package list...")
+  net.load(
+    pmconfig.db.packages,
+    function(ok, result)
+      local packages = {}
+      if not ok then
+        pluginmanager:error("Error loading package list!")
+      else
+        packages = util.parse_data(result, pmconfig.patterns.packages)
+      end
+      core.command_view:enter(
+        "Select installer or put direct URL",
+        function(url, item)
+          if url:match("://") and not url:match("http[s]?://") then
             return pluginmanager:error(
-              "The returned function is empty, I have an error: " .. err
+              "This URL is invalid! Only HTTP and HTTPS are supported"
             )
           end
-          core.add_thread(installer)
+          if url:match("http[s]?://") then
+            load_and_run_installer(url)
+          else
+            local name = util.split(item.text, " ")[1]
+            load_and_run_installer(pmconfig.base_url.packages .. packages[name].path)
+          end
+        end,
+        function(text)
+          local list = {}
+          for name, p in pairs(packages) do
+            table.insert(list, name .. " - " .. p.description)
+          end
+          list = common.fuzzy_match(list, text)
+          table.sort(list)
+          return list
         end
       )
     end
@@ -158,17 +186,17 @@ local function install_menu()
   core.command_view:enter(
     "Install",
     function(option, item)
-      option = option or item.text
-      if option == "Plugin" then
+      option = ((option ~= "" and option) or item.text or ""):lower()
+      if option == "plugin" then
         core.add_thread(install, nil, "plugin")
-      elseif option == "Theme" then
+      elseif option == "theme" then
         core.add_thread(install, nil, "theme")
-      elseif option == "Package" then
-        core.add_thread(run_package_installer)
+      elseif option == "package" then
+        core.add_thread(package_installer)
       end
     end,
     function(text)
-      local options = { "Package", "Plugin", "Theme" }
+      local options = { "Plugin", "Package", "Theme" }
       return common.fuzzy_match(options, text)
     end
   )
@@ -178,15 +206,15 @@ local function uninstall_menu()
   core.command_view:enter(
     "Uninstall",
     function(option, item)
-      option = option or item.text
-      if option == "Plugin" then
+      option = (option or item.text):lower()
+      if option == "plugin" then
         core.add_thread(uninstall, nil, "plugin")
-      elseif option == "Theme" then
+      elseif option == "theme" then
         core.add_thread(uninstall, nil, "theme")
       end
     end,
     function(text)
-      local options = { "Plugin", "Theme" }
+      local options = { "Theme", "Plugin" }
       return common.fuzzy_match(options, text)
     end
   )

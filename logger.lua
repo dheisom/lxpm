@@ -1,16 +1,13 @@
 local core = require 'core'
 
 local logger = {}
+logger.__index = logger
 
 ---@param prefix string
 ---@return table
 function logger:new(prefix)
   prefix = prefix or "[%Y/%m/%d %H:%M:%S]"
   return setmetatable({ prefix = prefix }, logger)
-end
-
-function logger:__index(key)
-  return logger[key]
 end
 
 ---@param msg string

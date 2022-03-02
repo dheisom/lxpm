@@ -10,5 +10,5 @@ It requires `curl` installed on your system!
   - [x] (un)Install plugins
   - [x] (un)Install colors
   - [x] Support for packages(basic: only load a lua script from network)
-  - [ ] Support for list packages from [dheisom/lite-xl-packages](https://github.com/dheisom/lite-xl-packages)
+  - [X] Support for list packages from [dheisom/lite-xl-packages](https://github.com/dheisom/lite-xl-packages)
 
