@@ -56,6 +56,25 @@ function util.split(str, sep)
   return result
 end
 
+---Reads from stream.
+---@param proc process
+---@param stream Process.STREAM_STDERR | Process.STREAM_STDOUT
+---@param size? integer
+---@return string
+function util.read(proc, stream, size)
+  size = size or 2048
+  local readed = 0
+  local data = {}
+  while readed < size do
+    local d = proc:read(stream, size - readed)
+    if d == nil or #d == 0 then break end
+    table.insert(data, d)
+    readed = readed + #d
+  end
+  return table.concat(data, "")
+end
+
+
 ---A non-blocking function to run commands on the system
 ---@param command table
 ---@param callback fun(code integer, stdout string, stderr string)
@@ -66,8 +85,8 @@ function util.run(command, callback)
   end
   local read_size = 10485760 -- 10MiB
   local code = proc:returncode()
-  local out = proc:read_stdout(read_size)
-  local err = proc:read_stderr(read_size)
+  local out = util.read(proc, process.STREAM_STDOUT, read_size)
+  local err = util.read(proc, process.STREAM_STDERR, read_size)
   core.add_thread(callback, nil, code, out, err)
 end
 
