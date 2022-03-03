@@ -1,5 +1,5 @@
 local core = require 'core'
-local util = require 'plugins.lite-xl-pm.util'
+local util = require 'plugins.lxpm.util'
 
 local net = {
   git_status = {
