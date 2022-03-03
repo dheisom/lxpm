@@ -10,7 +10,7 @@ local net = {
 
 ---@param filename string
 ---@param url string
----@param callback fun(ok boolean, stderr string)
+---@param callback fun(boolean, string)
 function net.download(filename, url, callback)
   core.add_thread(
     util.run, nil,
@@ -20,7 +20,7 @@ function net.download(filename, url, callback)
 end
 
 ---@param url string
----@param callback fun(ok boolean, stdout string)
+---@param callback fun(boolean, string)
 function net.load(url, callback)
   core.add_thread(
     util.run, nil,
@@ -31,7 +31,7 @@ end
 
 ---@param url string
 ---@param path string
----@param callback fun(ok boolean, message string)
+---@param callback fun(boolean, string)
 function net.clone(url, path, callback)
   core.add_thread(
     util.run, nil,

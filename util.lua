@@ -1,6 +1,6 @@
 local core = require 'core'
 local process = require 'process'
-local pmconfig = require 'plugins.lite-xl-pm.config'
+local pmconfig = require 'plugins.lxpm.config'
 
 local util = {}
 
@@ -10,14 +10,15 @@ local util = {}
 function util.parse_data(data, pattern)
   local result, size = {}, 0
   for name, path, description in data:gmatch(pattern) do
+    name = util.trim(name)
     if pattern == pmconfig.patterns.plugins then
-      if pmconfig.ignore_plugins[util.trim(name)] then
+      if pmconfig.ignore_plugins[name] then
         goto skip
       end
     end
-    result[util.trim(name)] = {
+    result[name] = {
       path=util.trim(path),
-      description=util.trim(description or "")
+      description=util.trim(description or ""),
     }
     size = size + 1
     ::skip::
@@ -31,8 +32,8 @@ function util.trim(str)
   if str == nil or str == "" then
     return nil
   end
-  str = str:sub(str:find("[%w|%S]")-1):reverse()
-  str = str:sub(str:find("[%w|%S]")-1):reverse()
+  str = str:sub(str:find("[%w|%S]")-0):reverse()
+  str = str:sub(str:find("[%w|%S]")-0):reverse()
   return str
 end
 
@@ -58,7 +59,7 @@ end
 
 ---Reads from stream.
 ---@param proc process
----@param stream Process.STREAM_STDERR | Process.STREAM_STDOUT
+---@param stream process.STREAM_STDERR | process.STREAM_STDOUT
 ---@param size? integer
 ---@return string
 function util.read(proc, stream, size)
@@ -77,7 +78,7 @@ end
 
 ---A non-blocking function to run commands on the system
 ---@param command table
----@param callback fun(code integer, stdout string, stderr string)
+---@param callback fun(integer, string, string)
 function util.run(command, callback)
   local proc = process.start(command)
   while proc:running() do
