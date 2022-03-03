@@ -1,6 +1,6 @@
 local core = require 'core'
 local process = require 'process'
-local pmconfig = require 'plugins.lite-xl-pm.config'
+local pmconfig = require 'plugins.lxpm.config'
 
 local util = {}
 
@@ -10,12 +10,13 @@ local util = {}
 function util.parse_data(data, pattern)
   local result, size = {}, 0
   for name, path, description in data:gmatch(pattern) do
+    name = util.trim(name)
     if pattern == pmconfig.patterns.plugins then
-      if pmconfig.ignore_plugins[util.trim(name)] then
+      if pmconfig.ignore_plugins[name] then
         goto skip
       end
     end
-    result[util.trim(name)] = {
+    result[name] = {
       path=util.trim(path),
       description=util.trim(description or ""),
     }

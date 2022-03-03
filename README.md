@@ -1,4 +1,4 @@
-# lite-xl-pm
+# LXPM
 
 A simple Lite-XL plugin manager, this project is unofficial and in development.
 

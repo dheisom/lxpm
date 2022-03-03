@@ -1,17 +1,17 @@
 -- mod-version:2
 
-require 'plugins.lite-xl-pm.replacefunctions'
+require 'plugins.lxpm.replacefunctions'
 local core = require 'core'
 local command = require 'core.command'
 local common = require 'core.common'
 local keymap = require 'core.keymap'
 local system = require 'system'
-local pmconfig = require 'plugins.lite-xl-pm.config'
-local util = require 'plugins.lite-xl-pm.util'
-local net = require 'plugins.lite-xl-pm.net'
-local logger = require 'plugins.lite-xl-pm.logger'
+local pmconfig = require 'plugins.lxpm.config'
+local util = require 'plugins.lxpm.util'
+local net = require 'plugins.lxpm.net'
+local logger = require 'plugins.lxpm.logger'
 
-local pluginmanager = logger:new("[PluginManager]")
+local lxpm = logger:new("[LXPM]")
 
 ---@param folder string
 ---@param name string
@@ -27,13 +27,13 @@ local function download_and_load(folder, name, path)
     USERDIR.."/"..folder.."/"..name..".lua", url,
     function(ok, err)
       if not ok then
-        return pluginmanager:error("Error running curl: "..err)
+        return lxpm:error("Error running curl: "..err)
       elseif folder == "plugins" then
         core.load_plugins()
-        pluginmanager:log("Plugin '"..name.."' installed and loaded")
+        lxpm:log("Plugin '"..name.."' installed and loaded")
       else
         core.reload_module("colors."..name)
-        pluginmanager:log("Theme '"..name.."' installed and loaded")
+        lxpm:log("Theme '"..name.."' installed and loaded")
       end
     end
   )
@@ -41,31 +41,29 @@ end
 
 ---@param itype "theme"|"plugin"
 local function install(itype)
-  pluginmanager:log("Loading " .. itype .. " list...")
+  lxpm:log("Loading " .. itype .. " list...")
   local url = (itype == "theme" and pmconfig.db.themes)
               or pmconfig.db.plugins
   net.load(
     url,
     function(ok, result)
       if not ok then
-        return pluginmanager:error("Error running curl: " .. result)
+        return lxpm:error("Error running curl: " .. result)
       elseif result == "" or result == nil then
-        return pluginmanager:error(
-          "No data received, It can be a network problem!"
-        )
+        return lxpm:error("No data received, It can be a network problem!")
       end
       local pattern = (itype == "theme" and pmconfig.patterns.themes)
                       or pmconfig.patterns.plugins
       local list, lsize = util.parse_data(result, pattern)
       coroutine.yield(0.1)
       if lsize == 0 then
-        return pluginmanager:error("The list is empty, It can be a bug!")
+        return lxpm:error("The list is empty, It can be a bug!")
       end
       core.command_view:enter(
         "Install "..itype,
         function(text, item)
           local name = util.split(item and item.text or text)[1]
-          pluginmanager:log("Installing "..itype.." '"..name.."'...")
+          lxpm:log("Installing "..itype.." '"..name.."'...")
           local folder = (itype == 'plugin' and "plugins") or "colors"
           core.add_thread(download_and_load, nil, folder, name, list[name].path)
         end,
@@ -99,7 +97,7 @@ local function uninstall(rtype)
     end
   end
   if #list == 0 then
-    return pluginmanager:log("You dont have " .. rtype .. "'s installed!")
+    return lxpm:log("You dont have " .. rtype .. "'s installed!")
   end
   core.command_view:enter(
     "Uninstall "..rtype,
@@ -107,11 +105,9 @@ local function uninstall(rtype)
       local name = (item and item.text) or text
       local ok, err = os.remove(folder .. name .. ".lua")
       if ok then
-        pluginmanager:log(
-          "Ok "..rtype.." '"..name.."' removed! Restart your editor."
-        )
+        lxpm:log("Ok "..rtype.." '"..name.."' removed! Restart your editor.")
       else
-        pluginmanager:error("'"..name.."' not remove due to an error: "..err)
+        lxpm:error("'"..name.."' not remove due to an error: "..err)
       end
     end,
     function(text)
@@ -122,18 +118,18 @@ local function uninstall(rtype)
 end
 
 local function load_and_run_installer(url)
-  pluginmanager:log("Loading installer from the internet...")
+  lxpm:log("Loading installer from the internet...")
   net.load(
     url,
     function(ok, result)
       if not ok then
-        return pluginmanager:error("An error has ocorred: " .. result)
+        return lxpm:error("An error has ocorred: " .. result)
       end
       local lload = rawget(_G, "loadstring") or rawget(_G, "load")
-      pluginmanager:log("Running installer...")
+      lxpm:log("Running installer...")
       local installer, err = lload(result)
       if installer == nil then
-        return pluginmanager:error(
+        return lxpm:error(
           "The returned function is empty, I have an error: " .. err
         )
       end
@@ -143,13 +139,13 @@ local function load_and_run_installer(url)
 end
 
 local function package_installer()
-  pluginmanager:log("Loading package list...")
+  lxpm:log("Loading package list...")
   net.load(
     pmconfig.db.packages,
     function(ok, result)
       local packages = {}
       if not ok then
-        pluginmanager:error("Error loading package list!")
+        lxpm:error("Error loading package list!")
       else
         packages = util.parse_data(result, pmconfig.patterns.packages)
       end
@@ -157,7 +153,7 @@ local function package_installer()
         "Select installer or put direct URL",
         function(url, item)
           if url:match("://") and not url:match("http[s]?://") then
-            return pluginmanager:error(
+            return lxpm:error(
               "This URL is invalid! Only HTTP and HTTPS are supported"
             )
           end
