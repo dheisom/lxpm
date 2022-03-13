@@ -1,29 +1,20 @@
 local core = require 'core'
 local process = require 'process'
-local pmconfig = require 'plugins.lxpm.config'
 
 local util = {}
 
 ---@param data string
 ---@param pattern string
----@return table,integer
+---@return table
 function util.parse_data(data, pattern)
-  local result, size = {}, 0
-  for name, path, description in data:gmatch(pattern) do
-    name = util.trim(name)
-    if pattern == pmconfig.patterns.plugins then
-      if pmconfig.ignore_plugins[name] then
-        goto skip
-      end
-    end
-    result[name] = {
-      path=util.trim(path),
-      description=util.trim(description or ""),
-    }
-    size = size + 1
-    ::skip::
+  local result = {}
+  local match = data:gmatch(pattern)
+  while true do
+    local matched = { match() }
+    if #matched == 0 then break end
+    table.insert(result, matched)
   end
-  return result, size
+  return result
 end
 
 ---@param str string
@@ -89,6 +80,20 @@ function util.run(command, callback)
   local out = util.read(proc, process.STREAM_STDOUT, read_size)
   local err = util.read(proc, process.STREAM_STDERR, read_size)
   core.add_thread(callback, nil, code, out, err)
+end
+
+---@param arr table
+---@param value any
+---@return boolean, table?
+function util.contain(arr, value)
+  for _, v in ipairs(arr) do
+    if v == value then
+      return true
+    elseif type(v) == "table" and v[1] == value then
+      return true, v
+    end
+  end
+  return false
 end
 
 return util
