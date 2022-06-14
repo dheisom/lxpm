@@ -1,0 +1,23 @@
+{
+  "plugins": {
+    "nonicons": {
+      "description": "Add dev icons to TreeView and document tab",
+      "depends": ["font:nonicons"],
+      "get_type": "directly", // directly or git
+      "branch": null, // Set the branch name if it's a git repository
+      "url": "https://raw.githubusercontent.com/lite-xl/lite-xl-plugins/master/plugins/nonicons.lua"
+    }
+  },
+  "themes": {
+    "winter": {
+      "description": "A dark blue theme that combines with Dracula GTK theme",
+      "url": "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/master/colors/winter.lua"
+    }
+  },
+  "fonts": {
+    "nonicons": {
+      "description": "Dev icons for lite-xl(don't use it as a normal font - it don't have ASCII characters)",
+      "url": "https://github.com/yamatsum/nonicons/raw/master/dist/nonicons.ttf"
+    }
+  }
+}

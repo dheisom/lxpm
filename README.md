@@ -1,14 +1,5 @@
 # LXPM
 
-A simple Lite-XL plugin manager, this project is unofficial and in development.
-
-It requires `curl` installed on your system!
-
-
-# TODO
-
-  - [x] (un)Install plugins
-  - [x] (un)Install colors
-  - [x] Support for packages(basic: only load a lua script from network)
-  - [X] Support for list packages from [dheisom/lite-xl-packages](https://github.com/dheisom/lite-xl-packages)
-
+Welcome to the new version of the LXPM(Lite-XL Package Manager), this version will be
+very beautiful using the [lite-xl-widgets](/lite-xl/lite-xl-widgets) addon(thanks to @jgmdev),
+It's comming son, so wait a little.

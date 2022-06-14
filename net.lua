@@ -1,53 +1,55 @@
-local core = require 'core'
-local util = require 'plugins.lxpm.util'
+local net = {}
 
-local net = {
-  gs = {
-    ok = "cloned",
-    exists_or_not_found = "exists or not found",
-  }
-}
-
+---Download a file and return if it was executed with success and if not,
+---return the error message too
+---@param url string
 ---@param filename string
----@param url string
----@param callback fun(boolean, string)
-function net.download(filename, url, callback)
-  core.add_thread(
-    util.run, nil,
-    { "curl", "-SLsfk", url, "-o", filename },
-    function(code, _, err) callback(code==0, err) end
-  )
+---@return boolean, string
+function net.download(url, filename)
+  local proc = process.start({ "curl", "-SLsfk", url, "-o", filename })
+  while proc:running() do
+    coroutine.yield(0.01)
+  end
+  return proc:returncode() == 0, proc:read_stdout(10e3)
 end
 
+
+---Get data from the URL and return if the operation was executed with success
+---and the data received or the error message if it's failed
 ---@param url string
----@param callback fun(boolean, string, string)
-function net.load(url, callback)
-  core.add_thread(
-    util.run, nil,
-    { "curl", "-SLsfko-", url },
-    function(code, ...) callback(code==0, ...) end
-  )
+---@return boolean, string
+function net.get(url)
+  local proc = process.start({ "curl", "-SLsfk", url })
+  while proc:running() do
+    coroutine.yield(0.01)
+  end
+  return proc:returncode() == 0, proc:read_stdout(10e6)
 end
 
+---Clone a git repository and return the exit code and the stderr output
 ---@param url string
----@param path string
----@param callback fun(boolean, string)
-function net.clone(url, path, callback)
-  core.add_thread(
-    util.run, nil,
-    { "git", "clone", "--depth=1", url, path },
-    function(code)
-      local ok, message
-      if code == 128 then
-        ok, message = false, net.gs.exists_or_not_found
-      elseif code == 0 then
-        ok, message = true, net.gs.ok
-      else
-        ok, message = false, "unknown error(" .. code .. ")"
-      end
-      callback(ok, message)
+---@param branch string
+---@param folder string
+---@return integer, string
+function net.clone(url, branch, folder)
+  local proc = process.start(
+    {
+      "git", "clone", "--depth=1", "--recursive", "-q", "--shallow-submodules",
+      "--single-branch",
+      "-b", branch,
+      url, folder
+    },
+    { stderr = process.REDIRECT_STDOUT }
+  )
+  local stderr = ""
+  while proc:running() do
+    local e = proc:read_stdout(10e3)
+    if e ~= nil then
+      stderr = stderr .. e
     end
-  )
+    coroutine.yield(0)
+  end
+  return proc:returncode(), stderr
 end
 
 return net

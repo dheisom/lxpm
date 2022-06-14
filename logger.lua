@@ -1,3 +1,5 @@
+-- A stupid log lib that supports message prefix
+
 local core = require 'core'
 
 ---@class Logger
@@ -8,7 +10,7 @@ Logger.__index = Logger
 ---@param prefix string
 ---@return Logger
 function Logger:new(prefix)
-  prefix = prefix or "[%Y/%m/%d %H:%M:%S]"
+  prefix = prefix or ""
   return setmetatable({ prefix = prefix }, Logger)
 end
 
@@ -16,13 +18,14 @@ end
 ---@param ... any
 function Logger:log(msg, ...)
   local text = msg:format(...)
-  core.log(os.date(self.prefix) .. " " .. text)
+  core.log(self.prefix .. text)
 end
 
 ---@param msg string
+---@param ... any
 function Logger:error(msg, ...)
   local text = msg:format(...)
-  core.error(os.date(self.prefix) .. " " .. text)
+  core.error(self.prefix .. text)
 end
 
 return setmetatable({}, Logger)
