@@ -1,12 +1,14 @@
 local net = {}
 
+local default_options = { stderr = process.REDIRECT_STDOUT }
+
 ---Download a file and return if it was executed with success and if not,
 ---return the error message too
 ---@param url string
 ---@param filename string
 ---@return boolean, string
 function net.download(url, filename)
-  local proc = process.start({ "curl", "-SLsfk", url, "-o", filename })
+  local proc = process.start({ "curl", "-SLsfk", url, "-o", filename }, default_options)
   while proc:running() do
     coroutine.yield(0.01)
   end
@@ -19,7 +21,7 @@ end
 ---@param url string
 ---@return boolean, string
 function net.get(url)
-  local proc = process.start({ "curl", "-SLsfk", url })
+  local proc = process.start({ "curl", "-SLsfk", url }, default_options)
   while proc:running() do
     coroutine.yield(0.01)
   end
@@ -39,7 +41,7 @@ function net.clone(url, branch, folder)
       "-b", branch,
       url, folder
     },
-    { stderr = process.REDIRECT_STDOUT }
+    default_options
   )
   local stderr = ""
   while proc:running() do

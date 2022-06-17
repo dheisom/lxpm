@@ -2,15 +2,15 @@
 
 local core = require 'core'
 
----@class Logger
+---@class logger.Logger
 ---@field prefix string
 local Logger = {}
 Logger.__index = Logger
 
 ---@param prefix string
----@return Logger
+---@return logger.Logger
 function Logger:new(prefix)
-  prefix = prefix or ""
+  prefix = (prefix and prefix .. " ") or ""
   return setmetatable({ prefix = prefix }, Logger)
 end
 

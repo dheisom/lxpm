@@ -1,23 +1,53 @@
 {
-  "plugins": {
-    "nonicons": {
+  "plugins": [
+    {
+      "name": "nonicons",
       "description": "Add dev icons to TreeView and document tab",
-      "depends": ["font:nonicons"],
-      "get_type": "directly", // directly or git
-      "branch": null, // Set the branch name if it's a git repository
+      "depends": [{"type": "font", "name": "nonicons"}],
+      "get_type": "directly",
       "url": "https://raw.githubusercontent.com/lite-xl/lite-xl-plugins/master/plugins/nonicons.lua"
+    },
+    {
+      "name": "widgets",
+      "description": "Widgets to create user intarfaces",
+      "get_type": "clone",
+      "url": "https://github.com/lite-xl/lite-xl-widgets",
+      "folder": "{DATADIR}/widget"
+    },
+    {
+      "name": "lsp",
+      "description": "Add LSP support for many programming languages(need servers)",
+      "depends": [{"type": "plugin", "name": "widgets"}, {"type": "plugin", "name": "lintplus"}],
+      "get_type": "clone",
+      "url": "https://github.com/lite-xl/lite-xl-lsp",
+      "folder": "{USERDIR}/plugins/lsp"
+    },
+    {
+      "name": "lxpm",
+      "description": "This package manager :)",
+      "get_type": "clone",
+      "url": "https://github.com/dheisom/lxpm",
+      "branch": "new"
+    },
+    {
+      "name": "lintplus",
+      "description": "An improved linting plugin for lite-xl",
+      "get_type": "clone",
+      "url": "https://github.com/liquidev/lintplus"
     }
-  },
-  "themes": {
-    "winter": {
+  ],
+  "themes": [
+    {
+      "name": "winter",
       "description": "A dark blue theme that combines with Dracula GTK theme",
       "url": "https://raw.githubusercontent.com/lite-xl/lite-xl-colors/master/colors/winter.lua"
     }
-  },
-  "fonts": {
-    "nonicons": {
+  ],
+  "fonts": [
+    {
+      "name": "nonicons",
       "description": "Dev icons for lite-xl(don't use it as a normal font - it don't have ASCII characters)",
       "url": "https://github.com/yamatsum/nonicons/raw/master/dist/nonicons.ttf"
     }
-  }
+  ]
 }
