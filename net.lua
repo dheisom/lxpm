@@ -30,26 +30,27 @@ end
 
 ---Clone a git repository and return the exit code and the stderr output
 ---@param url string
----@param branch string
 ---@param folder string
+---@param branch? string
 ---@return integer, string
-function net.clone(url, branch, folder)
-  local proc = process.start(
-    {
-      "git", "clone", "--depth=1", "--recursive", "-q", "--shallow-submodules",
-      "--single-branch",
-      "-b", branch,
-      url, folder
-    },
-    default_options
-  )
+function net.clone(url, folder, branch)
+  local command = {
+    "git", "clone", "--depth=1", "--recursive", "-q", "--shallow-submodules",
+    "--single-branch",
+    url, folder
+  }
+  if branch then -- Set clone branch if defined
+    table.insert(command, "-b")
+    table.insert(command, branch)
+  end
+  local proc = process.start(command, default_options)
   local stderr = ""
   while proc:running() do
     local e = proc:read_stdout(10e3)
     if e ~= nil then
       stderr = stderr .. e
     end
-    coroutine.yield(0)
+    coroutine.yield(0.01)
   end
   return proc:returncode(), stderr
 end

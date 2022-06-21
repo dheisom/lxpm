@@ -40,11 +40,18 @@ end
 ---@param value any
 ---@param key string|integer
 ---@param array table[]
+---@return table|nil
 function util.find_table_on_array(value, key, array)
+  local i = 1
   for _, tb in pairs(array) do
     if tb[key] == value then
       return tb
     end
+    if i == 10 then -- Each 10 times it will give space to another process
+      i = 0
+      coroutine.yield()
+    end
+    i = i + 1
   end
   return nil
 end
